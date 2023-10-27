@@ -14,6 +14,7 @@ import tensorflow.contrib.layers as layers
 import json
 import imageio
 import joblib
+import wandb
 
 def parse_args():
     parser = argparse.ArgumentParser("Reinforcement Learning experiments for multiagent environments")
@@ -87,7 +88,7 @@ def make_env(scenario_name, arglist, evaluate=False): ###################
 
     world = scenario.make_world()
     # create multiagent environment
-    env = MultiAgentEnv(world, scenario.reset_world, scenario.reward, scenario.observation)
+    env = MultiAgentEnv(world, scenario.reset_world, scenario.reward, scenario.observation, scenario.info)
     return env
 
 
@@ -107,6 +108,9 @@ def evaluate_policy(evaluate_env, trainers, num_episode, display = False):
     adv_episode_rewards = [0.0]
     step = 0
     episode = 0
+    success_rate = 0
+    success_step = 0
+    flag = True
     frames = []
     obs_n = evaluate_env.reset()
     while True:
@@ -119,9 +123,12 @@ def evaluate_policy(evaluate_env, trainers, num_episode, display = False):
                 adv_episode_rewards[-1] += rew
             else:
                 good_episode_rewards[-1] += rew
-
         step += 1
         done = all(done_n)
+        success_rate = next_info_n[0]['success_rate']
+        if success_rate == 1.0 and flag:
+            success_step = step
+            flag = False
         terminal = (step > (arglist.eva_max_episode_len))
 
         obs_n = new_obs_n
@@ -146,6 +153,9 @@ def evaluate_policy(evaluate_env, trainers, num_episode, display = False):
 
             adv_episode_rewards.append(0)
             obs_n = evaluate_env.reset()
+            success_rate = 0
+            success_step = 0
+            flag = True
             step = 0
 
     return np.mean(good_episode_rewards), np.mean(adv_episode_rewards)
@@ -354,7 +364,7 @@ if __name__== "__main__":
                 if num_train == 0:
                     env_time1 = time.time()
                     interact_with_environments(env, trainers, node_id-1, 5 * arglist.batch_size)
-                    num_step += 5 * arglist.batch_size
+                    num_step += 5 * arglist.batch_size * num_node
                     env_time2 = time.time()
                     print('Env interaction time', env_time2 - env_time1)
                 else:
@@ -362,7 +372,7 @@ if __name__== "__main__":
                         if i >= arglist.num_adversaries:
                             agent.set_weigths(weights[i+1-arglist.num_adversaries])
                     interact_with_environments(env, trainers, node_id-1, 4 * arglist.eva_max_episode_len)
-                    num_step += 4 * arglist.eva_max_episode_len
+                    num_step += 4 * arglist.eva_max_episode_len * num_node
 
                 loss = trainers[node_id-1].update(trainers)
                 weights = trainers[node_id-1].get_weigths()
@@ -373,7 +383,7 @@ if __name__== "__main__":
             weights = comm.gather(weights, root = 0)
 
             if (node_id in LEARNERS):
-                num_train += 1
+                num_train += (num_node-1)
                 # if num_train > arglist.max_num_train:
                 if num_step > arglist.max_num_step:
                     save_weights(trainers, node_id - 1)
@@ -396,7 +406,11 @@ if __name__== "__main__":
                     print('training iteration:', num_train, 'step:', num_step, 'Good Reward:', good_reward, 'Adv Reward:', adv_reward, 'Training time:', round(end_train_time - start_time, 3), 'Global training time:', round(end_train_time- ground_global_time, 3))
                     global_train_time.append(round(end_train_time - ground_global_time, 3))
                     start_time = time.time()
-                num_train += 1
+                if num_train == 0:
+                    num_step +=  5 * arglist.batch_size * num_node
+                else:
+                    num_step += 4 * arglist.eva_max_episode_len * num_node
+                num_train += (num_node-1)
                 # if num_train > arglist.max_num_train:
                 if num_step > arglist.max_num_step:
                     #save_weights(trainers)

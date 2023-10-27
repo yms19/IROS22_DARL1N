@@ -83,7 +83,15 @@ class Scenario(BaseScenario):
 
 
     def info(self, agent, world):
-        return 0
+        info = {}
+        cover = 0
+        for l in world.landmarks:
+            dists = [np.sqrt(np.sum(np.square(a.state.p_pos - l.state.p_pos)))
+                     for a in world.policy_agents]
+            if min(dists) <= world.policy_agents[0].size + l.size:
+                cover += 1
+        info['success_rate'] = cover / self.n_landmarks
+        return info
 
     def is_collision(self, agent1, agent2):
         delta_pos = agent1.state.p_pos - agent2.state.p_pos

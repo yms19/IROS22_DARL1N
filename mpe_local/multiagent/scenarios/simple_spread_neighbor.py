@@ -131,3 +131,7 @@ class Scenario(BaseScenario):
                 num_neighbor += 1
 
         return np.concatenate([agent.state.p_vel] + [agent.state.p_pos] + [np.array([1])] + entity_pos + other_pos + other_vel + other_live)
+
+    def info(self, agent, world):
+        info = {}
+        return info

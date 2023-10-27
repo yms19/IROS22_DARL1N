@@ -13,7 +13,7 @@ python3  -m maddpg_o.experiments.train_darl1n \
     --good-policy=maddpg \
     --adv-policy=maddpg \
     --save-dir="../result/simple_spread/darl1n/5agents/5agents_1/" \
-    --save-rate=30 \
+    --save-rate=1000 \
     --max-num-train=3000 \
     --prosp-dist=0.1 \
     --eva-max-episode-len=20 \
