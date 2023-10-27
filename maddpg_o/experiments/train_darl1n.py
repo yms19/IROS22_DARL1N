@@ -14,7 +14,10 @@ import tensorflow.contrib.layers as layers
 import json
 import imageio
 import joblib
+from pathlib import Path
 import wandb
+import socket
+import csv
 
 def parse_args():
     parser = argparse.ArgumentParser("Reinforcement Learning experiments for multiagent environments")
@@ -109,7 +112,7 @@ def evaluate_policy(evaluate_env, trainers, num_episode, display = False):
     step = 0
     episode = 0
     success_rate = 0
-    success_step = 0
+    success_step = arglist.eva_max_episode_len
     flag = True
     frames = []
     obs_n = evaluate_env.reset()
@@ -154,11 +157,11 @@ def evaluate_policy(evaluate_env, trainers, num_episode, display = False):
             adv_episode_rewards.append(0)
             obs_n = evaluate_env.reset()
             success_rate = 0
-            success_step = 0
+            success_step = arglist.eva_max_episode_len
             flag = True
             step = 0
 
-    return np.mean(good_episode_rewards), np.mean(adv_episode_rewards)
+    return np.mean(good_episode_rewards), np.mean(adv_episode_rewards), success_rate, success_step
 
 
 def interact_with_environments(env, trainers, node_id, steps):
@@ -254,7 +257,7 @@ if __name__== "__main__":
     num_node = comm.Get_size()
     node_id = comm.Get_rank()
     node_name = MPI.Get_processor_name()
-
+    
     with tf.Session() as session:
         #Parse the parameters
         arglist = parse_args()
@@ -271,8 +274,31 @@ if __name__== "__main__":
         env = make_env(arglist.scenario, arglist, evaluate= False)
         obs_shape_n = [env.observation_space[i].shape for i in range(env.n)]
         node_id += arglist.num_adversaries
-
+        
+        run_dir = Path(os.path.split(os.path.dirname(os.path.abspath(__file__)))[
+                   0] + "/result/simple_spread/darl1n/5agents/5agents_1/")
+        if not run_dir.exists():
+                curr_run = 'run1'
+        else:
+            exst_run_nums = [int(str(folder.name).split('run')[1]) for folder in run_dir.iterdir() if str(folder.name).startswith('run')]
+            if len(exst_run_nums) == 0:
+                curr_run = 'run1'
+            else:
+                curr_run = 'run%i' % (max(exst_run_nums) + 1)
+        run_dir = run_dir / curr_run
+        if not run_dir.exists():
+            os.makedirs(str(run_dir))
+        
         if (node_id == CENTRAL_CONTROLLER):
+            # init wandb
+            # wandb.init(config=arglist,
+            #    project='darl1n',
+            #    entity='yangxt19',
+            #    notes=socket.gethostname(),
+            #    name=str(arglist.num_agents)+"agents",
+            #    dir=run_dir,
+            #    job_type="training",
+            #    reinit=True)
             trainers = []
             # The central controller only needs policy parameters to execute the policy for evaluation
             for i in range(num_agents):
@@ -399,13 +425,26 @@ if __name__== "__main__":
 
                     end_train_time = time.time()
                     #U.save_state(arglist.save_dir, saver=saver)
-                    good_reward, adv_reward = evaluate_policy(evaluate_env, trainers, 10, display = False)
+                    good_reward, adv_reward, success_rate, success_step = evaluate_policy(evaluate_env, trainers, 10, display = False)
                     final_good_rewards.append(good_reward)
                     final_adv_rewards.append(adv_reward)
                     train_time.append(end_train_time - start_time)
-                    print('training iteration:', num_train, 'step:', num_step, 'Good Reward:', good_reward, 'Adv Reward:', adv_reward, 'Training time:', round(end_train_time - start_time, 3), 'Global training time:', round(end_train_time- ground_global_time, 3))
+                    # print('training iteration:', num_train, 'step:', num_step, 'Good Reward:', good_reward, 'Adv Reward:', adv_reward, 'Training time:', round(end_train_time - start_time, 3), 'Global training time:', round(end_train_time- ground_global_time, 3))
+                    print('training iteration:', num_train, 'step:', num_step, 'Good Reward:', good_reward, 'Success Rate:', success_rate, 'Step:', success_step)
+                    # wandb.log({"success": success_rate}, step = num_step)
+                    # wandb.log({"step": success_step}, step = num_step)
+                    # str(run_dir)+
+                    filename = "./result_agent{}.csv".format(num_agents)
+                    with open(filename, "a", newline="") as csvfile:
+                        writer = csv.writer(csvfile)
+                        # 写入表头
+                        if num_train == 0:
+                            writer.writerow(["Step", "Success Rate", "Success Step", "Reward"])
+                        # 写入数据
+                        writer.writerow([num_step, success_rate, success_step, good_reward])
                     global_train_time.append(round(end_train_time - ground_global_time, 3))
                     start_time = time.time()
+
                 if num_train == 0:
                     num_step +=  5 * arglist.batch_size * num_node
                 else:
@@ -433,4 +472,5 @@ if __name__== "__main__":
                     train_end_time = time.time()
                     print('The total training time:', train_end_time - train_start_time)
                     print('Average train time', np.mean(train_time))
+                    # wandb.finish()
                     break
