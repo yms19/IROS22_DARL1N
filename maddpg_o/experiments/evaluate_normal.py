@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 from functools import partial
 import os
 import joblib
+from pyvirtualdisplay.smartdisplay import SmartDisplay
 
 def parse_args():
     parser = argparse.ArgumentParser("Reinforcement Learning experiments for multiagent environments")
@@ -126,6 +127,9 @@ def evaluate_policy(env, trainers, size_transitions, display = False):
             initial.append(agent.state.spin)
     print(initial)
     action_history = []
+    if display:
+        smartdisplay = SmartDisplay()
+        smartdisplay.start()
 
     while True:
         action_n = [agent.action(obs) for agent, obs in zip(trainers,obs_n)]
@@ -157,7 +161,9 @@ def evaluate_policy(env, trainers, size_transitions, display = False):
                     action_history = []
             else:
                 time.sleep(0.1)
-                frames.append(env.render('rgb_array')[0])
+                # frames.append(env.render('rgb_array')[0])
+                env.render('rgb_array')
+                frames.append(np.array(smartdisplay.waitgrab()))
                 print('The step is', step)
                 if (terminal or done):
                     gif_path = '../visualize/' + arglist.scenario + '/' + arglist.method + '/%dagents/gifs/' %arglist.num_agents
@@ -167,6 +173,7 @@ def evaluate_policy(env, trainers, size_transitions, display = False):
                     plt.xticks([]),plt.yticks([])
                     plt.savefig(gif_path + '%d.png' %num_transitions, transparent=True)
                     frames=[]
+                    smartdisplay.stop()
 
         if done or terminal:
             good_episode_rewards.append(0)
@@ -179,7 +186,7 @@ def evaluate_policy(env, trainers, size_transitions, display = False):
 
         if num_transitions >= size_transitions:
             print('good', good_episode_rewards, 'adv', adv_episode_rewards)
-            break
+            break            
         
     return np.mean(good_episode_rewards), np.mean(adv_episode_rewards)
 

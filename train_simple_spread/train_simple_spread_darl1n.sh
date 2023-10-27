@@ -1,26 +1,26 @@
 #!/bin/sh
 
-mpirun -n 4 \
+mpirun -n 6 \
 python3  -m maddpg_o.experiments.train_darl1n \
     --scenario=simple_spread \
-    --good-sight=0.15 \
+    --good-sight=0.2 \
     --adv-sight=100.0 \
-    --num-agents=3 \
-    --num-learners=3 \
+    --num-agents=5 \
+    --num-learners=5 \
     --num-adversaries=0 \
-    --num-food=3 \
-    --num-landmark=3\
+    --num-food=5 \
+    --num-landmark=5 \
     --good-policy=maddpg \
     --adv-policy=maddpg \
-    --save-dir="../result/simple_spread/darl1n/3agents/3agents_1/" \
+    --save-dir="../result/simple_spread/darl1n/5agents/5agents_1/" \
     --save-rate=30 \
-    --max-num-train=3000\
-    --prosp-dist=0.05 \
-    --eva-max-episode-len=25 \
-    --good-max-num-neighbors=3 \
-    --adv-max-num-neighbors=3 \
+    --max-num-train=3000 \
+    --prosp-dist=0.1 \
+    --eva-max-episode-len=20 \
+    --good-max-num-neighbors=5 \
+    --adv-max-num-neighbors=5 \
     --ratio=1 \
-    --seed=16\
+    --seed=1 \
 
 
 # # 6 agents

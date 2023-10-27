@@ -22,6 +22,7 @@ def parse_args():
     parser.add_argument("--max-episode-len", type=int, default=25, help="maximum episode length")
     parser.add_argument("--eva-max-episode-len", type=int, default=25, help="maximum episode length")
     parser.add_argument("--max-num-train", type=int, default=2000, help="number of train")
+    parser.add_argument("--max-num-step", type=int, default=100000000, help="number of steps")
     parser.add_argument("--num-adversaries", type=int, default=0, help="number of adversaries")
     parser.add_argument("--good-policy", type=str, default="maddpg", help="policy for good agents")
     parser.add_argument("--adv-policy", type=str, default="maddpg", help="policy of adversaries")
@@ -175,7 +176,8 @@ def interact_with_environments(env, trainers, node_id, steps):
                 if neighbor and i in neighbor and valid_neighbor < arglist.good_max_num_neighbors:
                     action_neighbor[valid_neighbor] = other_action
                     valid_neighbor += 1
-        #print(action_n)
+        # if node_id == 0:
+        #     print(action_n)
         new_obs_neighbor, rew, done_n, next_info_n = env.step(action_n) # Interaction within the neighbor area
 
         valid_neighbor = 1
@@ -287,6 +289,7 @@ if __name__== "__main__":
         train_step = 0
         iter_step = 0
         num_train = 0
+        num_step = 0
 
         if (node_id == CENTRAL_CONTROLLER):
             train_start_time = time.time()
@@ -351,6 +354,7 @@ if __name__== "__main__":
                 if num_train == 0:
                     env_time1 = time.time()
                     interact_with_environments(env, trainers, node_id-1, 5 * arglist.batch_size)
+                    num_step += 5 * arglist.batch_size
                     env_time2 = time.time()
                     print('Env interaction time', env_time2 - env_time1)
                 else:
@@ -358,6 +362,7 @@ if __name__== "__main__":
                         if i >= arglist.num_adversaries:
                             agent.set_weigths(weights[i+1-arglist.num_adversaries])
                     interact_with_environments(env, trainers, node_id-1, 4 * arglist.eva_max_episode_len)
+                    num_step += 4 * arglist.eva_max_episode_len
 
                 loss = trainers[node_id-1].update(trainers)
                 weights = trainers[node_id-1].get_weigths()
@@ -369,7 +374,8 @@ if __name__== "__main__":
 
             if (node_id in LEARNERS):
                 num_train += 1
-                if num_train > arglist.max_num_train:
+                # if num_train > arglist.max_num_train:
+                if num_step > arglist.max_num_step:
                     save_weights(trainers, node_id - 1)
                     break
 
@@ -387,11 +393,12 @@ if __name__== "__main__":
                     final_good_rewards.append(good_reward)
                     final_adv_rewards.append(adv_reward)
                     train_time.append(end_train_time - start_time)
-                    print('Num of training iteration:', num_train, 'Good Reward:', good_reward, 'Adv Reward:', adv_reward, 'Training time:', round(end_train_time - start_time, 3), 'Global training time:', round(end_train_time- ground_global_time, 3))
+                    print('training iteration:', num_train, 'step:', num_step, 'Good Reward:', good_reward, 'Adv Reward:', adv_reward, 'Training time:', round(end_train_time - start_time, 3), 'Global training time:', round(end_train_time- ground_global_time, 3))
                     global_train_time.append(round(end_train_time - ground_global_time, 3))
                     start_time = time.time()
                 num_train += 1
-                if num_train > arglist.max_num_train:
+                # if num_train > arglist.max_num_train:
+                if num_step > arglist.max_num_step:
                     #save_weights(trainers)
                     good_rew_file_name = arglist.save_dir + 'good_agent.pkl'
                     with open(good_rew_file_name, 'wb') as fp:

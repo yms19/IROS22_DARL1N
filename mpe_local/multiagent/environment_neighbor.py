@@ -98,6 +98,8 @@ class MultiAgentEnv(gym.Env):
 
     def reset(self, agent_id, step = 0):
         # Set the central agent
+        # if agent_id == 0:
+        #     print("agent{} reset!".format(agent_id))
         self.agent_id = agent_id
         # reset world
         self.action_agents, self.neighbor = self.reset_callback(self.world, agent_id, step)
