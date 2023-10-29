@@ -111,8 +111,8 @@ def evaluate_policy(evaluate_env, trainers, num_episode, display = False):
     adv_episode_rewards = [0.0]
     step = 0
     episode = 0
-    success_rate = 0
-    success_step = arglist.eva_max_episode_len
+    success_rate = [0] * num_episode
+    success_step = [arglist.eva_max_episode_len] * num_episode
     flag = True
     frames = []
     obs_n = evaluate_env.reset()
@@ -128,9 +128,9 @@ def evaluate_policy(evaluate_env, trainers, num_episode, display = False):
                 good_episode_rewards[-1] += rew
         step += 1
         done = all(done_n)
-        success_rate = next_info_n[0]['success_rate']
-        if success_rate == 1.0 and flag:
-            success_step = step
+        success_rate[episode] = next_info_n[0]['success_rate']
+        if success_rate[episode] == 1.0 and flag:
+            success_step[episode] = step
             flag = False
         terminal = (step > (arglist.eva_max_episode_len))
 
@@ -156,12 +156,10 @@ def evaluate_policy(evaluate_env, trainers, num_episode, display = False):
 
             adv_episode_rewards.append(0)
             obs_n = evaluate_env.reset()
-            success_rate = 0
-            success_step = arglist.eva_max_episode_len
             flag = True
             step = 0
 
-    return np.mean(good_episode_rewards), np.mean(adv_episode_rewards), success_rate, success_step
+    return np.mean(good_episode_rewards), np.mean(adv_episode_rewards), np.mean(success_rate), np.mean(success_step)
 
 
 def interact_with_environments(env, trainers, node_id, steps):
@@ -452,6 +450,16 @@ if __name__== "__main__":
                 num_train += (num_node-1)
                 # if num_train > arglist.max_num_train:
                 if num_step > arglist.max_num_step:
+                    # eval
+                    good_reward, adv_reward, success_rate, success_step = evaluate_policy(evaluate_env, trainers, 10, display = False)
+                    filename = "./result_agent{}.csv".format(num_agents)
+                    with open(filename, "a", newline="") as csvfile:
+                        writer = csv.writer(csvfile)
+                        # 写入表头
+                        if num_train == 0:
+                            writer.writerow(["Step", "Success Rate", "Success Step", "Reward"])
+                        # 写入数据
+                        writer.writerow([num_step, success_rate, success_step, good_reward])
                     #save_weights(trainers)
                     good_rew_file_name = arglist.save_dir + 'good_agent.pkl'
                     with open(good_rew_file_name, 'wb') as fp:
