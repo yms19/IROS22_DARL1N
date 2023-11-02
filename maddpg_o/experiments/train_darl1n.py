@@ -273,19 +273,19 @@ if __name__== "__main__":
         obs_shape_n = [env.observation_space[i].shape for i in range(env.n)]
         node_id += arglist.num_adversaries
         
-        run_dir = Path(os.path.split(os.path.dirname(os.path.abspath(__file__)))[
-                   0] + "/result/simple_spread/darl1n/5agents/5agents_1/")
-        if not run_dir.exists():
-                curr_run = 'run1'
-        else:
-            exst_run_nums = [int(str(folder.name).split('run')[1]) for folder in run_dir.iterdir() if str(folder.name).startswith('run')]
-            if len(exst_run_nums) == 0:
-                curr_run = 'run1'
-            else:
-                curr_run = 'run%i' % (max(exst_run_nums) + 1)
-        run_dir = run_dir / curr_run
-        if not run_dir.exists():
-            os.makedirs(str(run_dir))
+        # run_dir = Path(os.path.split(os.path.dirname(os.path.abspath(__file__)))[
+        #            0] + "/result/simple_spread/darl1n/5agents/5agents_1/")
+        # if not run_dir.exists():
+        #         curr_run = 'run1'
+        # else:
+        #     exst_run_nums = [int(str(folder.name).split('run')[1]) for folder in run_dir.iterdir() if str(folder.name).startswith('run')]
+        #     if len(exst_run_nums) == 0:
+        #         curr_run = 'run1'
+        #     else:
+        #         curr_run = 'run%i' % (max(exst_run_nums) + 1)
+        # run_dir = run_dir / curr_run
+        # if not run_dir.exists():
+        #     os.makedirs(str(run_dir))
         
         if (node_id == CENTRAL_CONTROLLER):
             # init wandb
@@ -409,7 +409,7 @@ if __name__== "__main__":
             if (node_id in LEARNERS):
                 num_train += (num_node-1)
                 # if num_train > arglist.max_num_train:
-                if num_step > arglist.max_num_step:
+                if (num_train % arglist.save_rate == 0) or (num_step > arglist.max_num_step):
                     save_weights(trainers, node_id - 1)
                     break
 
@@ -431,7 +431,6 @@ if __name__== "__main__":
                     print('training iteration:', num_train, 'step:', num_step, 'Good Reward:', good_reward, 'Success Rate:', success_rate, 'Step:', success_step)
                     # wandb.log({"success": success_rate}, step = num_step)
                     # wandb.log({"step": success_step}, step = num_step)
-                    # str(run_dir)+
                     filename = "./result_agent{}.csv".format(num_agents)
                     with open(filename, "a", newline="") as csvfile:
                         writer = csv.writer(csvfile)
