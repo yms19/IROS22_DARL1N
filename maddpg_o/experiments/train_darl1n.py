@@ -272,6 +272,7 @@ if __name__== "__main__":
         env = make_env(arglist.scenario, arglist, evaluate= False)
         obs_shape_n = [env.observation_space[i].shape for i in range(env.n)]
         node_id += arglist.num_adversaries
+        good_sight = arglist.good_sight
         
         # run_dir = Path(os.path.split(os.path.dirname(os.path.abspath(__file__)))[
         #            0] + "/result/simple_spread/darl1n/5agents/5agents_1/")
@@ -411,7 +412,8 @@ if __name__== "__main__":
                 # if num_train > arglist.max_num_train:
                 if (num_train % arglist.save_rate == 0) or (num_step > arglist.max_num_step):
                     save_weights(trainers, node_id - 1)
-                    break
+                    if (num_step > arglist.max_num_step):
+                        break
 
             if(node_id == CENTRAL_CONTROLLER):
                 if(num_train % arglist.save_rate == 0):
@@ -428,10 +430,10 @@ if __name__== "__main__":
                     final_adv_rewards.append(adv_reward)
                     train_time.append(end_train_time - start_time)
                     # print('training iteration:', num_train, 'step:', num_step, 'Good Reward:', good_reward, 'Adv Reward:', adv_reward, 'Training time:', round(end_train_time - start_time, 3), 'Global training time:', round(end_train_time- ground_global_time, 3))
-                    print('training iteration:', num_train, 'step:', num_step, 'Good Reward:', good_reward, 'Success Rate:', success_rate, 'Step:', success_step)
+                    print('training iteration:', num_train, 'step:', num_step, 'Good Reward:', good_reward, 'Success Rate:', success_rate, 'Step:', success_step, 'Training time:', round(end_train_time - start_time, 3))
                     # wandb.log({"success": success_rate}, step = num_step)
                     # wandb.log({"step": success_step}, step = num_step)
-                    filename = "./result_agent{}.csv".format(num_agents)
+                    filename = "./result_agent{}_sight_{}.csv".format(num_agents, int(good_sight))
                     with open(filename, "a", newline="") as csvfile:
                         writer = csv.writer(csvfile)
                         # 写入表头
