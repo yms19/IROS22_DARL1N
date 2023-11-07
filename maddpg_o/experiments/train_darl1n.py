@@ -162,46 +162,47 @@ def evaluate_policy(evaluate_env, trainers, num_episode, display = False):
     return np.mean(good_episode_rewards), np.mean(adv_episode_rewards), np.mean(success_rate), np.mean(success_step)
 
 
-def interact_with_environments(env, trainers, node_id, steps):
+def interact_with_environments(env, trainers, node_id, episodes):
     act_d = env.action_space[0].n
-    for k in range(steps):
-        obs_pot, neighbor = env.reset(node_id) # Neighbor does not include agent itself
+    for i in range(episodes):
+        obs_reset, neighbor = env.reset(node_id) # Neighbor does not include agent itself
+        obs_pot = obs_reset
 
-        action_n = [np.zeros((act_d))] * env.n # Actions for transition
+        for j in range(arglist.max_episode_len):
+            action_n = [np.zeros((act_d))] * env.n # Actions for transition
 
-        action_neighbor = [np.zeros((act_d))] * arglist.good_max_num_neighbors #The neighbors include the agent itself
-        target_action_neighbor = [np.zeros((act_d))] * arglist.good_max_num_neighbors
+            action_neighbor = [np.zeros((act_d))] * arglist.good_max_num_neighbors #The neighbors include the agent itself
+            target_action_neighbor = [np.zeros((act_d))] * arglist.good_max_num_neighbors
+            self_action = trainers[node_id].action(obs_pot[node_id])
+            
+            action_n[node_id] = self_action
+            action_neighbor[0] = self_action
 
-        self_action = trainers[node_id].action(obs_pot[node_id])
+            valid_neighbor = 1
+            for i, obs in enumerate(obs_pot):
+                if i == node_id: continue
+                if len(obs) !=0 :
+                    #print(obs)
+                    other_action = trainers[i].action(obs)
+                    action_n[i] = other_action
+                    if neighbor and i in neighbor and valid_neighbor < arglist.good_max_num_neighbors:
+                        action_neighbor[valid_neighbor] = other_action
+                        valid_neighbor += 1
 
-        action_n[node_id] = self_action
-        action_neighbor[0] = self_action
+            new_obs_neighbor, rew, done_n, next_info_n = env.step(action_n) # Interaction within the neighbor area
 
-        valid_neighbor = 1
-        for i, obs in enumerate(obs_pot):
-            if i == node_id: continue
-            if len(obs) !=0 :
-                #print(obs)
-                other_action = trainers[i].action(obs)
-                action_n[i] = other_action
-                if neighbor and i in neighbor and valid_neighbor < arglist.good_max_num_neighbors:
-                    action_neighbor[valid_neighbor] = other_action
+            valid_neighbor = 1
+            target_action_neighbor[0]=trainers[node_id].target_action(new_obs_neighbor[node_id])
+
+            for k, next in enumerate(new_obs_neighbor):
+                if k == node_id: continue
+                if len(next) != 0 and valid_neighbor < arglist.good_max_num_neighbors:
+                    target_action_neighbor[valid_neighbor] = trainers[k].target_action(next)
                     valid_neighbor += 1
-        # if node_id == 0:
-        #     print(action_n)
-        new_obs_neighbor, rew, done_n, next_info_n = env.step(action_n) # Interaction within the neighbor area
 
-        valid_neighbor = 1
-        target_action_neighbor[0]=trainers[node_id].target_action(new_obs_neighbor[node_id])
-
-        for k, next in enumerate(new_obs_neighbor):
-            if k == node_id: continue
-            if len(next) != 0 and valid_neighbor < arglist.good_max_num_neighbors:
-                target_action_neighbor[valid_neighbor] = trainers[k].target_action(next)
-                valid_neighbor += 1
-
-        info_n = 0.1
-        trainers[node_id].experience(obs_pot[node_id], action_neighbor, new_obs_neighbor[node_id], target_action_neighbor, rew)
+            info_n = 0.1
+            trainers[node_id].experience(obs_pot[node_id], action_neighbor, new_obs_neighbor[node_id], target_action_neighbor, rew)
+            obs_pot = new_obs_neighbor
 
     return
 
@@ -325,6 +326,7 @@ if __name__== "__main__":
         iter_step = 0
         num_train = 0
         num_step = 0
+        num_episode = 10
 
         if (node_id == CENTRAL_CONTROLLER):
             train_start_time = time.time()
@@ -388,16 +390,16 @@ if __name__== "__main__":
                 # Receive parameters
                 if num_train == 0:
                     env_time1 = time.time()
-                    interact_with_environments(env, trainers, node_id-1, 5 * arglist.batch_size)
-                    num_step += 5 * arglist.batch_size * num_node
+                    interact_with_environments(env, trainers, node_id-1, num_episode)
+                    num_step += arglist.max_episode_len * num_episode
                     env_time2 = time.time()
                     print('Env interaction time', env_time2 - env_time1)
                 else:
                     for i, agent in enumerate(trainers):
                         if i >= arglist.num_adversaries:
                             agent.set_weigths(weights[i+1-arglist.num_adversaries])
-                    interact_with_environments(env, trainers, node_id-1, 4 * arglist.eva_max_episode_len)
-                    num_step += 4 * arglist.eva_max_episode_len * num_node
+                    interact_with_environments(env, trainers, node_id-1, num_episode)
+                    num_step += arglist.max_episode_len * num_episode
 
                 loss = trainers[node_id-1].update(trainers)
                 weights = trainers[node_id-1].get_weigths()
@@ -433,7 +435,7 @@ if __name__== "__main__":
                     print('training iteration:', num_train, 'step:', num_step, 'Good Reward:', good_reward, 'Success Rate:', success_rate, 'Step:', success_step, 'Training time:', round(end_train_time - start_time, 3))
                     # wandb.log({"success": success_rate}, step = num_step)
                     # wandb.log({"step": success_step}, step = num_step)
-                    filename = "./result_agent{}_sight_{}.csv".format(num_agents, int(good_sight))
+                    filename = "./result_agent{}_dev.csv".format(num_agents, int(good_sight))
                     with open(filename, "a", newline="") as csvfile:
                         writer = csv.writer(csvfile)
                         # 写入表头
@@ -445,15 +447,17 @@ if __name__== "__main__":
                     start_time = time.time()
 
                 if num_train == 0:
-                    num_step +=  5 * arglist.batch_size * num_node
+                    # num_step +=  5 * arglist.batch_size * num_node
+                    num_step += arglist.max_episode_len * num_episode
                 else:
-                    num_step += 4 * arglist.eva_max_episode_len * num_node
+                    # num_step += 4 * arglist.eva_max_episode_len * num_node
+                    num_step += arglist.max_episode_len * num_episode
                 num_train += (num_node-1)
                 # if num_train > arglist.max_num_train:
                 if num_step > arglist.max_num_step:
                     # eval
                     good_reward, adv_reward, success_rate, success_step = evaluate_policy(evaluate_env, trainers, 10, display = False)
-                    filename = "./result_agent{}.csv".format(num_agents)
+                    filename = "./result_agent{}_dev.csv".format(num_agents)
                     with open(filename, "a", newline="") as csvfile:
                         writer = csv.writer(csvfile)
                         # 写入表头
