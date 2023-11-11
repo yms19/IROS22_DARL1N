@@ -435,7 +435,7 @@ if __name__== "__main__":
                     print('training iteration:', num_train, 'step:', num_step, 'Good Reward:', good_reward, 'Success Rate:', success_rate, 'Step:', success_step, 'Training time:', round(end_train_time - start_time, 3))
                     # wandb.log({"success": success_rate}, step = num_step)
                     # wandb.log({"step": success_step}, step = num_step)
-                    filename = "./result_agent{}_dev.csv".format(num_agents, int(good_sight))
+                    filename = "./result_agent{}_new_reward2.csv".format(num_agents, int(good_sight))
                     with open(filename, "a", newline="") as csvfile:
                         writer = csv.writer(csvfile)
                         # 写入表头
@@ -457,7 +457,7 @@ if __name__== "__main__":
                 if num_step > arglist.max_num_step:
                     # eval
                     good_reward, adv_reward, success_rate, success_step = evaluate_policy(evaluate_env, trainers, 10, display = False)
-                    filename = "./result_agent{}_dev.csv".format(num_agents)
+                    filename = "./result_agent{}_new_reward2.csv".format(num_agents)
                     with open(filename, "a", newline="") as csvfile:
                         writer = csv.writer(csvfile)
                         # 写入表头

@@ -13,7 +13,7 @@
 #     --num-landmark=5 \
 #     --good-policy=maddpg \
 #     --adv-policy=maddpg \
-#     --save-dir="./result/simple_spread/darl1n/5agents/5agents_1/" \
+#     --save-dir="./result/simple_spread/darl1n/5agents/5agents_4/" \
 #     --save-rate=1000 \
 #     --max-num-train=3000 \
 #     --prosp-dist=0.2 \
@@ -38,7 +38,7 @@
 #     --num-landmark=20 \
 #     --good-policy=maddpg \
 #     --adv-policy=maddpg \
-#     --save-dir="./result/simple_spread/darl1n/20agents/20agents_1/" \
+#     --save-dir="./result/simple_spread/darl1n/20agents/20agents_5/" \
 #     --save-rate=1000 \
 #     --max-num-train=2000\
 #     --prosp-dist=0.4 \
@@ -47,7 +47,7 @@
 #     --good-max-num-neighbors=20 \
 #     --adv-max-num-neighbors=20 \
 #     --ratio=4.0 \
-#     --seed=1 \
+#     --seed=2 \
 
 
 # 50 agents
@@ -63,7 +63,7 @@ python3  -m maddpg_o.experiments.train_darl1n \
     --num-landmark=50 \
     --good-policy=maddpg \
     --adv-policy=maddpg \
-    --save-dir="./result/simple_spread/darl1n/50agents/50agents_1/" \
+    --save-dir="./result/simple_spread/darl1n/50agents/50agents_2/" \
     --save-rate=1000 \
     --max-num-train=2000\
     --prosp-dist=0.35 \

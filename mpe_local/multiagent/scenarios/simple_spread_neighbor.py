@@ -87,11 +87,11 @@ class Scenario(BaseScenario):
         agent = world.agents[index]
         rew = 0
         dists = [np.sqrt(np.sum(np.square(agent.state.p_pos - l.state.p_pos))) for l in world.landmarks]
-        rew -= min(dists)
+        rew -= min(dists) / self.ratio
 
         for food in world.landmarks:
             if self.is_collision(food, agent):
-                rew += 1
+                rew += 4
 
         for a in world.agents:
             if a == agent: continue
